@@ -1,0 +1,21 @@
+Almost all the examples codes in this directory make mistake while passing an int as an argument to a 
+on_thread_start functoin.
+
+The syntax of the function is:
+	
+	int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg)
+
+so if you want to pass an integer as "arg" use the following methodology:
+	
+	#include <stdint.h>
+	
+	void *threadfunc(void *param){
+    	int id = (intptr_t) param;
+    	...
+	}
+
+	int i, r;
+	r = pthread_create(&thread, NULL, threadfunc, (void *) (intptr_t) i);
+
+The same is included in "test2.c". Remember to include <stdint.h>.
+Also a uintptr_t variant also exists.

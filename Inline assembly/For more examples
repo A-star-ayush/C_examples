@@ -1,0 +1,7 @@
+cpuid.h
+
+most of the asm statements in the Linux source code are grouped into the following source files:
+/usr/src/linux/include/asm
+usr/src/linux/include/asm-i386
+/usr/src/linux/arch/i386/
+/usr/src/linux/drivers/

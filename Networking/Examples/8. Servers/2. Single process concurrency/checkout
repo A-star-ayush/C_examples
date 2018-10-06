@@ -1,0 +1,6 @@
+Alternative to select is poll command. Checkout the difference under C/Docs/IO/Low\ Level\ IO.
+
+Seriously checkout poll. It is considered by many as a better option than a mere alternative.
+
+for UPD: the concept of single process concurrent server doesn't make much sense for udp (unless multi-protocol) since there is
+	 but a single file descriptor for polling.

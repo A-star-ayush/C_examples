@@ -1,0 +1,30 @@
+/* Values of network related options such as TCP buffer sizes, under Linux, can be viwed in /proc/sys/net/ipv4 */
+
+/* When a server receives a close call from the client, it does not go into the TIMED_WAIT state. So the same address
+   can be used again. But when the server is the one to initiate the close call, it will go into TIMED_WAIT state. We
+   speak of this not in the context of having already set SO_REUSEADDR using setsockopt prior to binding. */
+
+/* We have got getsockname to get the address info from a socket and getsockopt to know the runnning configuration
+   setsockopt can be used to change the running configuration but changing the address info of a running socket is a no no.
+   It might be possible but not advised. You can try other things like port forwarding. */
+
+/* U can make use of the telnet command to check the server program as well: telnet <hostname> <port number> [eg. telnet localhost 20000] if
+   you are not using the program Example/tester.c */
+
+/* Checkout samples from test.c and www.gnu.org/software/libc/manual/html_node/Socket-Option-Functions.html for getsockopt and setsockopt 
+   checkout SO_KEEPALIVE, SO_DONTROUTE, SO_LINGER, SO_BROADCAST, SO_RCVTIMEO, SO_OOBINLINE, SO_SNDBUF, SO_RCVBUF, SO_REUSEADDR, SO_ERROR, SO_DEBUG, etc. */
+
+/* Interaction of middleboxes(eg. Cisco PIX Firewall)  with TCP Urgent indications discourage applications from depending on urgent
+   indications for their correct operation, as urgent indications may not be reliable in the current Internet. To read more checkout rfc 6093.
+   But still if you wish to use it for what it's worth, checkout www.gnu.org/software/libc/manual/html_node/Out_002dof_002dBand-Data.html */
+
+/* Graceful termination of a tcp connection couple of read writes back and forth. Because even the blocking enabled socket write returns immediately 
+   instead of waiting for ACK. Also no indication of failure to deliver is implicit in a send(). Only Locally detected errors are indicated by a return value of -1.
+   Partially closing the connection for reading or writing using shutdown can help in graceful termination. */
+
+/* use of buffer ... many of the examples here consist of a simple echo server. The function serving the client makes a buffer for reading and writing.. to save on 
+   stack allocation, one can choose to make the buffer "static" whenever possible without affecting the semantics. */
+
+/* To share file descriptors, one can directly use the ancillary library (http://www.normalesup.org/~george/comp/libancillary/) or can make use of sendmsg, recvmsg 
+   functions to share them across UNIX domain sockets */
+

@@ -1,0 +1,4 @@
+1) nfds - many examples initialize nfds with getdtablesize (1024 when last checked). However, you can choose to keep it one more than the max fd so far designated. Example use can be found under Multiservice.
+
+2) Not all the includes made in each source code are necessary. Most of them were included as a part of a sublime shortcut.
+

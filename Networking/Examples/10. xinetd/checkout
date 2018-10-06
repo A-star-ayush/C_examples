@@ -1,0 +1,8 @@
+https://www.cyberciti.biz/faq/linux-how-do-i-configure-xinetd-service/ 
+
+OR 
+
+Guides/C/Network\ Programming/xinetd AND Guides/C/GNU C Library/www.gnu.org/software/libc/manual/html_node/Inetd.html
+	[ Note: xinetd is the secure alternative to inetd; use sudo apt install xinetd to install it ]
+
+Wikipedia: https://en.wikipedia.org/wiki/Xinetd 

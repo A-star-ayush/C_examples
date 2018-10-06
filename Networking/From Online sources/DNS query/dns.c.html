@@ -1,0 +1,500 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html style="cursor: auto ! important;" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<title>dns.c</title>
+<style type="text/css">
+.enscript-comment { font-style: italic; color: rgb(178,34,34); }
+.enscript-function-name { font-weight: bold; color: rgb(0,0,255); }
+.enscript-variable-name { font-weight: bold; color: rgb(184,134,11); }
+.enscript-keyword { font-weight: bold; color: rgb(160,32,240); }
+.enscript-reference { font-weight: bold; color: rgb(95,158,160); }
+.enscript-string { font-weight: bold; color: rgb(188,143,143); }
+.enscript-builtin { font-weight: bold; color: rgb(218,112,214); }
+.enscript-type { font-weight: bold; color: rgb(34,139,34); }
+.enscript-highlight { text-decoration: underline; color: 0; }
+</style>
+</head>
+<body id="top">
+<h1 style="margin:8px;" id="f1">dns.c&nbsp;&nbsp;&nbsp;<span style="font-weight: normal; font-size: 0.5em;">[<a href="http://opensource.apple.com/source/ChatServer/ChatServer-263.1/jabberd2/resolver/dns.c?txt">plain text</a>]</span></h1>
+<hr>
+<div></div>
+<pre><span class="enscript-comment">/*
+ * jabberd - Jabber Open Source Server
+ * Copyright (c) 2002 Jeremie Miller, Thomas Muldowney,
+ *                    Ryan Eatmon, Robert Norris
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA02111-1307USA
+ */</span>
+
+#<span class="enscript-reference">include</span> <span class="enscript-string">"resolver.h"</span>
+#<span class="enscript-reference">include</span> <span class="enscript-string">"dns.h"</span>
+
+#<span class="enscript-reference">include</span> <span class="enscript-string">&lt;string.h&gt;</span>
+#<span class="enscript-reference">include</span> <span class="enscript-string">&lt;stdlib.h&gt;</span>
+
+#<span class="enscript-reference">ifdef</span> <span class="enscript-variable-name">HAVE_NETINET_IN_H</span>
+# <span class="enscript-reference">include</span> <span class="enscript-string">&lt;netinet/in.h&gt;</span>
+#<span class="enscript-reference">endif</span>
+#<span class="enscript-reference">ifdef</span> <span class="enscript-variable-name">HAVE_ARPA_NAMESER_H</span>
+# <span class="enscript-reference">include</span> <span class="enscript-string">&lt;arpa/nameser.h&gt;</span>
+#<span class="enscript-reference">endif</span>
+#<span class="enscript-reference">ifdef</span> <span class="enscript-variable-name">HAVE_ARPA_INET_H</span>
+# <span class="enscript-reference">include</span> <span class="enscript-string">&lt;arpa/inet.h&gt;</span>
+#<span class="enscript-reference">endif</span>
+#<span class="enscript-reference">ifdef</span> <span class="enscript-variable-name">HAVE_RESOLV_H</span>
+# <span class="enscript-reference">include</span> <span class="enscript-string">&lt;resolv.h&gt;</span>
+#<span class="enscript-reference">endif</span>
+#<span class="enscript-reference">ifdef</span> <span class="enscript-variable-name">HAVE_SYS_SOCKET_H</span>
+# <span class="enscript-reference">include</span> <span class="enscript-string">&lt;sys/socket.h&gt;</span>
+#<span class="enscript-reference">endif</span>
+#<span class="enscript-reference">ifdef</span> <span class="enscript-variable-name">HAVE_WINSOCK2_H</span>
+# <span class="enscript-reference">include</span> <span class="enscript-string">&lt;winsock2.h&gt;</span>
+#<span class="enscript-reference">endif</span>
+#<span class="enscript-reference">ifdef</span> <span class="enscript-variable-name">HAVE_WINDNS_H</span>
+# <span class="enscript-reference">include</span> <span class="enscript-string">&lt;windns.h&gt;</span>
+#<span class="enscript-reference">endif</span>
+
+<span class="enscript-comment">/*
+ * Structure for query header.  The order of the fields is machine- and
+ * compiler-dependent, depending on the byte/bit order and the layout
+ * of bit fields.  We use bit fields only in int variables, as this
+ * is all ANSI requires.  This requires a somewhat confusing rearrangement.
+ */</span>
+
+<span class="enscript-type">typedef</span> <span class="enscript-type">struct</span> {
+        <span class="enscript-type">unsigned</span>        id :16;         <span class="enscript-comment">/* query identification number */</span>
+#<span class="enscript-reference">if</span> <span class="enscript-variable-name">BYTE_ORDER</span> == <span class="enscript-variable-name">BIG_ENDIAN</span>
+                        <span class="enscript-comment">/* fields in third byte */</span>
+        <span class="enscript-type">unsigned</span>        qr: 1;          <span class="enscript-comment">/* response flag */</span>
+        <span class="enscript-type">unsigned</span>        opcode: 4;      <span class="enscript-comment">/* purpose of message */</span>
+        <span class="enscript-type">unsigned</span>        aa: 1;          <span class="enscript-comment">/* authoritive answer */</span>
+        <span class="enscript-type">unsigned</span>        tc: 1;          <span class="enscript-comment">/* truncated message */</span>
+        <span class="enscript-type">unsigned</span>        rd: 1;          <span class="enscript-comment">/* recursion desired */</span>
+                        <span class="enscript-comment">/* fields in fourth byte */</span>
+        <span class="enscript-type">unsigned</span>        ra: 1;          <span class="enscript-comment">/* recursion available */</span>
+        <span class="enscript-type">unsigned</span>        unused :3;      <span class="enscript-comment">/* unused bits (MBZ as of 4.9.3a3) */</span>
+        <span class="enscript-type">unsigned</span>        rcode :4;       <span class="enscript-comment">/* response code */</span>
+#<span class="enscript-reference">endif</span>
+#<span class="enscript-reference">if</span> <span class="enscript-variable-name">BYTE_ORDER</span> == <span class="enscript-variable-name">LITTLE_ENDIAN</span> || <span class="enscript-variable-name">BYTE_ORDER</span> == <span class="enscript-variable-name">PDP_ENDIAN</span>
+                        <span class="enscript-comment">/* fields in third byte */</span>
+        <span class="enscript-type">unsigned</span>        rd :1;          <span class="enscript-comment">/* recursion desired */</span>
+        <span class="enscript-type">unsigned</span>        tc :1;          <span class="enscript-comment">/* truncated message */</span>
+        <span class="enscript-type">unsigned</span>        aa :1;          <span class="enscript-comment">/* authoritive answer */</span>
+        <span class="enscript-type">unsigned</span>        opcode :4;      <span class="enscript-comment">/* purpose of message */</span>
+        <span class="enscript-type">unsigned</span>        qr :1;          <span class="enscript-comment">/* response flag */</span>
+                        <span class="enscript-comment">/* fields in fourth byte */</span>
+        <span class="enscript-type">unsigned</span>        rcode :4;       <span class="enscript-comment">/* response code */</span>
+        <span class="enscript-type">unsigned</span>        unused :3;      <span class="enscript-comment">/* unused bits (MBZ as of 4.9.3a3) */</span>
+        <span class="enscript-type">unsigned</span>        ra :1;          <span class="enscript-comment">/* recursion available */</span>
+#<span class="enscript-reference">endif</span>
+                        <span class="enscript-comment">/* remaining bytes */</span>
+        <span class="enscript-type">unsigned</span>        qdcount :16;    <span class="enscript-comment">/* number of question entries */</span>
+        <span class="enscript-type">unsigned</span>        ancount :16;    <span class="enscript-comment">/* number of answer entries */</span>
+        <span class="enscript-type">unsigned</span>        nscount :16;    <span class="enscript-comment">/* number of authority entries */</span>
+        <span class="enscript-type">unsigned</span>        arcount :16;    <span class="enscript-comment">/* number of resource entries */</span>
+} HEADER;
+
+
+<span class="enscript-comment">/* compare two srv structures, order by priority then by randomised weight */</span>
+<span class="enscript-type">static</span> <span class="enscript-type">int</span> <span class="enscript-function-name">_srv_compare</span>(<span class="enscript-type">const</span> <span class="enscript-type">void</span> *a, <span class="enscript-type">const</span> <span class="enscript-type">void</span> *b) {
+    dns_host_t ah = * (dns_host_t *) a, bh = * (dns_host_t *) b;
+    dns_srv_t arr, brr;
+
+    <span class="enscript-keyword">if</span>(ah == NULL) <span class="enscript-keyword">return</span> 1;
+    <span class="enscript-keyword">if</span>(bh == NULL) <span class="enscript-keyword">return</span> -1;
+
+    arr = (dns_srv_t) ah-&gt;rr;
+    brr = (dns_srv_t) bh-&gt;rr;
+
+    <span class="enscript-keyword">if</span>(arr-&gt;priority &gt; brr-&gt;priority) <span class="enscript-keyword">return</span> 1;
+    <span class="enscript-keyword">if</span>(arr-&gt;priority &lt; brr-&gt;priority) <span class="enscript-keyword">return</span> -1;
+
+    <span class="enscript-keyword">if</span>(arr-&gt;rweight &gt; brr-&gt;rweight) <span class="enscript-keyword">return</span> -1;
+    <span class="enscript-keyword">if</span>(arr-&gt;rweight &lt; brr-&gt;rweight) <span class="enscript-keyword">return</span> 1;
+    
+    <span class="enscript-keyword">return</span> 0;
+}
+
+
+<span class="enscript-comment">/* unix implementation */</span>
+#<span class="enscript-reference">ifdef</span> <span class="enscript-variable-name">HAVE_RES_QUERY</span>
+
+<span class="enscript-comment">/* the largest packet we'll send and receive */</span>
+#<span class="enscript-reference">if</span> <span class="enscript-variable-name">PACKETSZ</span> &gt; 1024
+# <span class="enscript-reference">define</span> <span class="enscript-variable-name">MAX_PACKET</span> PACKETSZ
+#<span class="enscript-reference">else</span>
+# <span class="enscript-reference">define</span> <span class="enscript-variable-name">MAX_PACKET</span> (1024)
+#<span class="enscript-reference">endif</span>
+
+<span class="enscript-type">typedef</span> <span class="enscript-type">union</span> {
+    HEADER          hdr;
+    <span class="enscript-type">unsigned</span> <span class="enscript-type">char</span>   buf[MAX_PACKET];
+} dns_packet_t;
+
+<span class="enscript-type">static</span> <span class="enscript-type">void</span> *<span class="enscript-function-name">_a_rr</span>(dns_packet_t packet, <span class="enscript-type">unsigned</span> <span class="enscript-type">char</span> *eom, <span class="enscript-type">unsigned</span> <span class="enscript-type">char</span> **scan) {
+    <span class="enscript-type">struct</span> in_addr in;
+
+    NS_GET32(in.s_addr, *scan);
+    in.s_addr = ntohl(in.s_addr);
+
+    <span class="enscript-keyword">return</span> strdup(inet_ntoa(in));
+}
+
+<span class="enscript-type">static</span> <span class="enscript-type">void</span> *<span class="enscript-function-name">_aaaa_rr</span>(dns_packet_t packet, <span class="enscript-type">unsigned</span> <span class="enscript-type">char</span> *eom, <span class="enscript-type">unsigned</span> <span class="enscript-type">char</span> **scan) {
+    <span class="enscript-type">char</span> addr[INET6_ADDRSTRLEN];
+    <span class="enscript-type">struct</span> sockaddr_in6 sa6;
+    <span class="enscript-type">int</span> i;
+
+    memset(&amp;sa6, 0, <span class="enscript-keyword">sizeof</span>(sa6));
+    sa6.sin6_family = AF_INET6;
+#<span class="enscript-reference">ifdef</span> <span class="enscript-variable-name">SIN6_LEN</span>
+    sa6.sin6_len = <span class="enscript-keyword">sizeof</span>(sa6);
+#<span class="enscript-reference">endif</span>
+    
+    <span class="enscript-keyword">for</span>(i = 0; i &lt; 16; i++) {
+        sa6.sin6_addr.s6_addr[i] = (*scan)[i];
+    }
+
+    j_inet_ntop((<span class="enscript-type">struct</span> sockaddr_storage *)&amp;sa6, addr, <span class="enscript-keyword">sizeof</span>(addr));
+
+    <span class="enscript-keyword">return</span> strdup(addr);
+}
+
+<span class="enscript-type">static</span> <span class="enscript-type">void</span> *<span class="enscript-function-name">_srv_rr</span>(dns_packet_t packet, <span class="enscript-type">unsigned</span> <span class="enscript-type">char</span> *eom, <span class="enscript-type">unsigned</span> <span class="enscript-type">char</span> **scan) {
+    <span class="enscript-type">unsigned</span> <span class="enscript-type">int</span> priority, weight, port;
+    <span class="enscript-type">int</span> len;
+    <span class="enscript-type">char</span> host[256];
+    dns_srv_t srv;
+
+    NS_GET16(priority, *scan);
+    NS_GET16(weight, *scan);
+    NS_GET16(port, *scan);
+
+    len = dn_expand(packet.buf, eom, *scan, host, 256);
+    <span class="enscript-keyword">if</span> (len &lt; 0)
+        <span class="enscript-keyword">return</span> NULL;
+    *scan = (<span class="enscript-type">unsigned</span> <span class="enscript-type">char</span> *) (*scan + len);
+
+    srv = (dns_srv_t) malloc(<span class="enscript-keyword">sizeof</span>(<span class="enscript-type">struct</span> dns_srv_st));
+
+    srv-&gt;priority = priority;
+    srv-&gt;weight = weight;
+    srv-&gt;port = port;
+
+    <span class="enscript-comment">/* add a random factor to the weight, for load balancing and such */</span>
+    <span class="enscript-keyword">if</span>(weight != 0)
+        srv-&gt;rweight = 1 + rand() % (10000 * weight);
+    <span class="enscript-keyword">else</span>
+        srv-&gt;rweight = 0;
+
+    strcpy(srv-&gt;name, host);
+
+    <span class="enscript-keyword">return</span> (<span class="enscript-type">void</span> *) srv;
+}
+
+<span class="enscript-comment">/** the actual resolver function */</span>
+dns_host_t <span class="enscript-function-name">dns_resolve</span>(<span class="enscript-type">const</span> <span class="enscript-type">char</span> *zone, <span class="enscript-type">int</span> query_type) {
+    <span class="enscript-type">char</span> host[256];
+    dns_packet_t packet;
+    <span class="enscript-type">int</span> len, qdcount, ancount, an, n;
+    <span class="enscript-type">unsigned</span> <span class="enscript-type">char</span> *eom, *scan;
+    dns_host_t *reply, first;
+    <span class="enscript-type">unsigned</span> <span class="enscript-type">int</span> t_type, type, class, ttl;
+
+    <span class="enscript-keyword">if</span>(zone == NULL || *zone == <span class="enscript-string">'\0'</span>)
+        <span class="enscript-keyword">return</span> NULL;
+
+    <span class="enscript-keyword">switch</span>(query_type)
+    {
+        <span class="enscript-keyword">case</span> <span class="enscript-reference">DNS_QUERY_TYPE_A</span>:
+            t_type = ns_t_a;
+            <span class="enscript-keyword">break</span>;
+
+        <span class="enscript-keyword">case</span> <span class="enscript-reference">DNS_QUERY_TYPE_AAAA</span>:
+            t_type = ns_t_a6;
+            <span class="enscript-keyword">break</span>;
+
+        <span class="enscript-keyword">case</span> <span class="enscript-reference">DNS_QUERY_TYPE_SRV</span>:
+            t_type = ns_t_srv;
+            <span class="enscript-keyword">break</span>;
+
+        <span class="enscript-reference">default</span>:
+            <span class="enscript-keyword">return</span> NULL;
+    }
+
+    <span class="enscript-comment">/* do the actual query */</span>
+    <span class="enscript-keyword">if</span>((len = res_query(zone, ns_c_in, t_type, packet.buf, MAX_PACKET)) == -1 || len &lt; <span class="enscript-keyword">sizeof</span>(HEADER))
+        <span class="enscript-keyword">return</span> NULL;
+
+    <span class="enscript-comment">/* we got a valid result, containing two types of records - packet
+     * and answer .. we have to skip over the packet records */</span>
+
+    <span class="enscript-comment">/* no. of packets, no. of answers */</span>
+    qdcount = ntohs(packet.hdr.qdcount);
+    ancount = ntohs(packet.hdr.ancount);
+
+    <span class="enscript-comment">/* end of the returned message */</span>
+    eom = (<span class="enscript-type">unsigned</span> <span class="enscript-type">char</span> *) (packet.buf + len);
+
+    <span class="enscript-comment">/* our current location */</span>
+    scan = (<span class="enscript-type">unsigned</span> <span class="enscript-type">char</span> *) (packet.buf + <span class="enscript-keyword">sizeof</span>(HEADER));
+
+    <span class="enscript-comment">/* skip over the packet records */</span>
+    <span class="enscript-keyword">while</span>(qdcount &gt; 0 &amp;&amp; scan &lt; eom) {
+        qdcount--;
+        <span class="enscript-keyword">if</span>((len = dn_expand(packet.buf, eom, scan, host, 256)) &lt; 0)
+            <span class="enscript-keyword">return</span> NULL;
+        scan = (<span class="enscript-type">unsigned</span> <span class="enscript-type">char</span> *) (scan + len + NS_QFIXEDSZ);
+    }
+
+    <span class="enscript-comment">/* create an array to store the replies in */</span>
+    reply = (dns_host_t *) malloc(<span class="enscript-keyword">sizeof</span>(dns_host_t) * ancount);
+    memset(reply, 0, <span class="enscript-keyword">sizeof</span>(dns_host_t) * ancount);
+
+    an = 0;
+    <span class="enscript-comment">/* loop through the answer buffer and extract SRV records */</span>
+    <span class="enscript-keyword">while</span>(ancount &gt; 0 &amp;&amp; scan &lt; eom ) {
+        ancount--;
+        len = dn_expand(packet.buf, eom, scan, host, 256);
+        <span class="enscript-keyword">if</span>(len &lt; 0) {
+            <span class="enscript-keyword">for</span>(n = 0; n &lt; an; n++)
+                free(reply[n]);
+            free(reply);
+            <span class="enscript-keyword">return</span> NULL;
+        }
+
+        scan += len;
+
+        <span class="enscript-comment">/* extract the various parts of the record */</span>
+        NS_GET16(type, scan);
+        NS_GET16(class, scan);
+        NS_GET32(ttl, scan);
+        NS_GET16(len, scan);
+
+        <span class="enscript-comment">/* skip records we're not interested in */</span>
+        <span class="enscript-keyword">if</span>(type != t_type) {
+            scan = (<span class="enscript-type">unsigned</span> <span class="enscript-type">char</span> *) (scan + len);
+            <span class="enscript-keyword">continue</span>;
+        }
+
+        <span class="enscript-comment">/* create a new reply structure to save it in */</span>
+        reply[an] = (dns_host_t) malloc(<span class="enscript-keyword">sizeof</span>(<span class="enscript-type">struct</span> dns_host_st));
+
+        reply[an]-&gt;type = type;
+        reply[an]-&gt;class = class;
+        reply[an]-&gt;ttl = ttl;
+
+        reply[an]-&gt;next = NULL;
+
+        <span class="enscript-comment">/* type-specific processing */</span>
+        <span class="enscript-keyword">switch</span>(type)
+        {
+            <span class="enscript-keyword">case</span> <span class="enscript-reference">ns_t_a</span>:
+                reply[an]-&gt;rr = _a_rr(packet, eom, &amp;scan);
+                <span class="enscript-keyword">break</span>;
+
+            <span class="enscript-keyword">case</span> <span class="enscript-reference">ns_t_a6</span>:
+                reply[an]-&gt;rr = _aaaa_rr(packet, eom, &amp;scan);
+                <span class="enscript-keyword">break</span>;
+
+            <span class="enscript-keyword">case</span> <span class="enscript-reference">ns_t_srv</span>:
+                reply[an]-&gt;rr = _srv_rr(packet, eom, &amp;scan);
+                <span class="enscript-keyword">break</span>;
+
+            <span class="enscript-reference">default</span>:
+                scan = (<span class="enscript-type">unsigned</span> <span class="enscript-type">char</span> *) (scan + len);
+                <span class="enscript-keyword">continue</span>;
+        }
+
+        <span class="enscript-comment">/* fell short, we're done */</span>
+        <span class="enscript-keyword">if</span>(reply[an]-&gt;rr == NULL)
+        {
+            free(reply[an]);
+            reply[an] = NULL;
+            <span class="enscript-keyword">break</span>;
+        }
+
+        <span class="enscript-comment">/* on to the next one */</span>
+        an++;
+    }
+
+    <span class="enscript-comment">/* sort srv records them */</span>
+    <span class="enscript-keyword">if</span>(t_type == ns_t_srv)
+        qsort(reply, an, <span class="enscript-keyword">sizeof</span>(dns_host_t), _srv_compare);
+
+    <span class="enscript-comment">/* build a linked list out of the array elements */</span>
+    <span class="enscript-keyword">for</span>(n = 0; n &lt; an - 1; n++)
+        reply[n]-&gt;next = reply[n + 1];
+
+    first = reply[0];
+
+    free(reply);
+
+    <span class="enscript-keyword">return</span> first;
+}
+
+#<span class="enscript-reference">endif</span> <span class="enscript-comment">/* HAVE_RES_QUERY */</span>
+
+<span class="enscript-comment">/* windows implementation */</span>
+#<span class="enscript-reference">ifdef</span> <span class="enscript-variable-name">HAVE_DNSQUERY</span>
+
+<span class="enscript-comment">/* mingw doesn't have these, and msdn doesn't document them. hmph. */</span>
+#<span class="enscript-reference">ifndef</span> <span class="enscript-variable-name">DNS_TYPE_SRV</span>
+# <span class="enscript-reference">define</span> <span class="enscript-variable-name">DNS_TYPE_SRV</span> (33)
+#<span class="enscript-reference">endif</span>
+#<span class="enscript-reference">ifndef</span> <span class="enscript-variable-name">DNS_TYPE_AAAA</span>
+# <span class="enscript-reference">define</span> <span class="enscript-variable-name">DNS_TYPE_AAAA</span> (28)
+#<span class="enscript-reference">endif</span>
+
+<span class="enscript-type">static</span> <span class="enscript-type">void</span> *<span class="enscript-function-name">_a_rr</span>(DNS_A_DATA *data) {
+    <span class="enscript-type">struct</span> in_addr in;
+
+    in.s_addr = data-&gt;IpAddress;
+    
+    <span class="enscript-keyword">return</span> strdup(inet_ntoa(in));
+}
+
+<span class="enscript-type">static</span> <span class="enscript-type">void</span> *<span class="enscript-function-name">_aaaa_rr</span>(DNS_AAAA_DATA *data) {
+    <span class="enscript-type">char</span> addr[INET6_ADDRSTRLEN];
+    <span class="enscript-type">struct</span> sockaddr_in6 sa6;
+    <span class="enscript-type">int</span> i;
+
+    memset(&amp;sa6, 0, <span class="enscript-keyword">sizeof</span>(sa6));
+    sa6.sin6_family = AF_INET6;
+#<span class="enscript-reference">ifdef</span> <span class="enscript-variable-name">SIN6_LEN</span>
+    sa6.sin6_len = <span class="enscript-keyword">sizeof</span>(sa6);
+#<span class="enscript-reference">endif</span>
+
+    <span class="enscript-keyword">for</span>(i = 0; i &lt; 4; i++)
+        sa6.sin6_addr.s6_addr32[i] = data-&gt;Ip6Address.IP6Dword[i];
+
+    j_inet_ntop((<span class="enscript-type">struct</span> sockaddr_storage *) &amp;sa6, addr, <span class="enscript-keyword">sizeof</span>(addr));
+
+    <span class="enscript-keyword">return</span> strdup(addr);
+}
+
+<span class="enscript-type">static</span> <span class="enscript-type">void</span> *<span class="enscript-function-name">_srv_rr</span>(DNS_SRV_DATA *data) {
+    dns_srv_t srv;
+
+    srv = (dns_srv_t) malloc(<span class="enscript-keyword">sizeof</span>(<span class="enscript-type">struct</span> dns_srv_st));
+
+    srv-&gt;priority = data-&gt;wPriority;
+    srv-&gt;weight = data-&gt;wWeight;
+    srv-&gt;port = data-&gt;wPort;
+
+    <span class="enscript-keyword">if</span>(srv-&gt;weight != 0)
+        srv-&gt;rweight = 1 + rand() % (10000 * srv-&gt;weight);
+    <span class="enscript-keyword">else</span>
+        srv-&gt;rweight = 0;
+
+    strncpy(srv-&gt;name, data-&gt;pNameTarget, 255);
+    srv-&gt;name[255] = 0;
+
+    <span class="enscript-keyword">return</span> (<span class="enscript-type">void</span> *) srv;
+}
+
+dns_host_t <span class="enscript-function-name">dns_resolve</span>(<span class="enscript-type">const</span> <span class="enscript-type">char</span> *zone, <span class="enscript-type">int</span> query_type) {
+    <span class="enscript-type">int</span> type, num, i;
+    PDNS_RECORD rr, scan;
+    dns_host_t *reply, first;
+
+    <span class="enscript-keyword">if</span>(zone == NULL || *zone == <span class="enscript-string">'\0'</span>)
+        <span class="enscript-keyword">return</span> NULL;
+
+    <span class="enscript-keyword">switch</span>(query_type) {
+        <span class="enscript-keyword">case</span> <span class="enscript-reference">DNS_QUERY_TYPE_A</span>:
+            type = DNS_TYPE_A;
+            <span class="enscript-keyword">break</span>;
+
+        <span class="enscript-keyword">case</span> <span class="enscript-reference">DNS_QUERY_TYPE_AAAA</span>:
+            type = DNS_TYPE_AAAA;
+            <span class="enscript-keyword">break</span>;
+
+        <span class="enscript-keyword">case</span> <span class="enscript-reference">DNS_QUERY_TYPE_SRV</span>:
+            type = DNS_TYPE_SRV;
+            <span class="enscript-keyword">break</span>;
+
+        <span class="enscript-reference">default</span>:
+            <span class="enscript-keyword">return</span> NULL;
+    }
+
+    <span class="enscript-keyword">if</span>(DnsQuery(zone, type, DNS_QUERY_STANDARD, NULL, &amp;rr, NULL) != 0)
+        <span class="enscript-keyword">return</span> NULL;
+
+    num = 0;
+    <span class="enscript-keyword">for</span>(scan = rr; scan != NULL; scan = scan-&gt;pNext)
+        num++;
+
+    reply = (dns_host_t *) malloc(<span class="enscript-keyword">sizeof</span>(dns_host_t) * num);
+    memset(reply, 0, <span class="enscript-keyword">sizeof</span>(dns_host_t) * num);
+
+    num = 0;
+    <span class="enscript-keyword">for</span>(scan = rr; scan != NULL; scan = scan-&gt;pNext) {
+        <span class="enscript-keyword">if</span>(scan-&gt;wType != type || stricmp(scan-&gt;pName, zone) != 0)
+            <span class="enscript-keyword">continue</span>;
+
+        reply[num] = (dns_host_t) malloc(<span class="enscript-keyword">sizeof</span>(<span class="enscript-type">struct</span> dns_host_st));
+
+        reply[num]-&gt;type = scan-&gt;wType;
+        reply[num]-&gt;class = 0;
+        reply[num]-&gt;ttl = scan-&gt;dwTtl;
+
+        reply[num]-&gt;next = NULL;
+
+        <span class="enscript-keyword">switch</span>(type) {
+            <span class="enscript-keyword">case</span> <span class="enscript-reference">DNS_TYPE_A</span>:
+                reply[num]-&gt;rr = _a_rr(&amp;scan-&gt;Data.A);
+                <span class="enscript-keyword">break</span>;
+
+            <span class="enscript-keyword">case</span> <span class="enscript-reference">DNS_TYPE_AAAA</span>:
+                reply[num]-&gt;rr = _aaaa_rr(&amp;scan-&gt;Data.AAAA);
+                <span class="enscript-keyword">break</span>;
+
+            <span class="enscript-keyword">case</span> <span class="enscript-reference">DNS_TYPE_SRV</span>:
+                reply[num]-&gt;rr = _srv_rr(&amp;scan-&gt;Data.SRV);
+                <span class="enscript-keyword">break</span>;
+        }
+
+        num++;
+    }
+
+    <span class="enscript-keyword">if</span>(type == DNS_TYPE_SRV)
+        qsort(reply, num, <span class="enscript-keyword">sizeof</span>(dns_host_t), _srv_compare);
+
+    <span class="enscript-keyword">for</span>(i = 0; i &lt; num - 1; i++)
+        reply[i]-&gt;next = reply[i + 1];
+
+    first = reply[0];
+
+    free(reply);
+
+    <span class="enscript-keyword">return</span> first;
+}
+#<span class="enscript-reference">endif</span> <span class="enscript-comment">/* HAVE_DNSQUERY */</span>
+
+<span class="enscript-comment">/** free an srv structure */</span>
+<span class="enscript-type">void</span> <span class="enscript-function-name">dns_free</span>(dns_host_t dns) {
+    dns_host_t next;
+
+    <span class="enscript-keyword">while</span>(dns != NULL) {
+        next = dns-&gt;next;
+        free(dns-&gt;rr);
+        free(dns);
+        dns = next;
+    }
+}
+</pre>
+<hr>
+</body></html>

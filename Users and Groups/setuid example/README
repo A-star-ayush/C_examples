@@ -1,0 +1,10 @@
+Compile: gcc code.c  .. if you compile with sudo, you can skip the next step
+Change ownership: sudo chown root a.out   .. can use root.root to change the group to root as well
+Set setuid bit: sudo chmod +s a.out
+
+The code might not work as desired on filesystems mounted with nosuid attribute... try copying the code to
+a different filesystem (or a different partition with may be the same filesystem)..
+
+
+*** As of Linux 2.2, the power of the superuser (root) has been partitioned into a set of discrete capabilities.
+	If the kernel is compiled with compabitily support, try using them (capset) instead of setuid  ***
