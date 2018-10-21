@@ -12,7 +12,7 @@ struct xxx
    int b,c,d=7,e,f;
 };
 
-typedef struct xxx test2; //2nd style [more time efficient]
+typedef struct xxx test2; //2nd style
 
 int main(int argc, char const *argv[])
 {

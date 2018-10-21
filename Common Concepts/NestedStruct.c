@@ -16,7 +16,7 @@ struct two
 	int a;
 	int b;
 
-  struct one instance1;  //two has an instance of one but one couldnot have of two becoz it was declared before.
+  struct one instance1;  //two has an instance of one but one couldnot have of two because that would cause infinite recursion
 };
 
 int main(int argc, char const *argv[])
