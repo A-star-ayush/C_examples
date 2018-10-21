@@ -3,18 +3,18 @@
 #include <string.h>
 
 /*	One way of thinking of this recursive call would be to think about its iterative counterpart
-	(although that shouldn't be the practise) and the variables (count and len) it will use */
+	(although that shouldn't be the practise) and the variables (count and maxCount) it will use */
 
-int seq(char* str, char c, int count, int len){
-	if(str[0]=='\0') return len;  // notice \n is also the part of the string will yields one extra call	
+int seq(char* str, char c, int count, int maxCount){
+	if(str[0]=='\0') return maxCount;  // notice \n is also the part of the string will yields one extra call	
 							// but is useful when the string is ending with the character forming the sequence
 	
-	if(str[0]==c) seq(str+1, c, ++count, len);   // count++ will yield 0 always
+	if(str[0]==c) seq(str+1, c, ++count, maxCount);   // count++ will yield 0 always
 
 	else {
-		if(count>len) len=count;
+		if(count>maxCount) maxCount=count;
 		count=0;
-		seq(str+1, c, count, len);
+		seq(str+1, c, count, maxCount);
 	}
 }
 

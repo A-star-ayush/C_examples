@@ -1,51 +1,37 @@
 #include <stdio.h>
 #include <string.h>
 
-// see anagrams.java for a better version ... this is not working correctly
-
-void printArray(char* str, int n){
-	int i=0;
-	for(;i<n;i++)
-		printf("%c",str[i]);  // printing the permutation
-	printf("\n");
+void swap(char* x, char* y) {
+	char temp = *x;
+	*x = *y;
+	*y = temp;
 }
 
-void permut(char* str, int len, int n, int i) {
-	if (n == len)
-		printArray(str, n);
+void permut(char* str, int currentIndex, int maxIndex) {
+	if (currentIndex == maxIndex)
+		puts(str);
 	else {
-		int j;
-		for (j = i; i < len; ++j) {
-			str[j]
+		int i;
+		for (i = currentIndex; i <= maxIndex; ++i) {
+			swap(str + currentIndex, str + i);
+			permut(str, currentIndex + 1, maxIndex);
+			swap(str + i, str + currentIndex);
 		}
-	}
-}
-void permut(char* str, int n, int i){
-	printArray(str, n);
-	int j;
-	for(j=i+1;j<n;j++){
-		char temp=str[i];
-		str[i]=str[j];
-		str[j]=temp;
-
-		permut(str,n,i+1);
-
-		char temp2=str[i];
-		str[i]=str[j];
-		str[j]=temp2;
 	}
 }
 
 int main(int argc, char const *argv[])
 {
-	char str[10];
-	
+	char src[11];
+
 	printf("Enter a string (max length 10): ");
-	scanf("%10s",str);
+	scanf("%10s",src);
 
 	printf("The permutations are as follows: \n");
 
-	permut(str,strlen(str),0);  // 0 meaning print all permutations starting from 0th index
+	int len = strlen(src);
 	
+	permut(src, 0, len - 1);
+
 	return 0;
 }
