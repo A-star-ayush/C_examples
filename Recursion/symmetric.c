@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdio_ext.h>
 
 // A symmetric sequence is one in which the middle element is 0 (and that is the only 0 in the sequence)
 // and the sequence is palindromic
@@ -6,7 +7,7 @@
 int isSymmetric(int* arr, int n){
 	int first=arr[0];
 	if(first==0)
-		return 1;
+		return !n;
 	else
 	{
 		int mid=isSymmetric(arr+1,n-2);  // -2 because arr has also been increemented by 1

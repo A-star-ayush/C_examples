@@ -10,6 +10,16 @@ void printArray(char* str, int n){
 	printf("\n");
 }
 
+void permut(char* str, int len, int n, int i) {
+	if (n == len)
+		printArray(str, n);
+	else {
+		int j;
+		for (j = i; i < len; ++j) {
+			str[j]
+		}
+	}
+}
 void permut(char* str, int n, int i){
 	printArray(str, n);
 	int j;

@@ -2,6 +2,10 @@
 
 int r, c;  // number of rows and columns
 
+// use of len is not clear.. may be the function should return len instead of 1 in case of destination reached
+// if so, the logical OR will also have to be replaced but then we can run into the problem of multiple paths
+// One can also use a global variable to store the final length value
+
 int findPath(int grid[r][c], int marked[r][c], char path[r][c], int len, int x, int y, int desX, int desY){
 	if(x<0 || y<0 || x>=r || y>=c)
 		return 0;

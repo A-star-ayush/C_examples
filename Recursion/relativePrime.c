@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+// a better way would be to perform gcd and check if it is 1
 int relPrime(int x, int y){
 	if(x==1 || y==1)
 		return 1;
